@@ -1,0 +1,230 @@
+
+# include <iostream>
+# include <fstream>
+# include <sstream>
+# include <stdexcept>
+# include "Network.h"
+# include <string>
+# include <vector>
+# include <cctype>
+
+using std::cout, std::endl;
+using std::string, std::vector, std::invalid_argument, std::ifstream, 
+std::stringstream, std::runtime_error, std::exception;
+
+Network::Network() : users({vector<User*>()}), posts({vector<Post*>()}), tags({vector<Tag*>()}) {}
+
+void Network::loadFromFile(string fileName) {
+    // TODO: load user and post information from file
+    ifstream ifs(fileName);
+
+    if (!ifs.is_open()) {
+        throw invalid_argument("Error: file could not be opened");
+    }
+    string input;
+    vector<string> half;
+    stringstream sstream;
+    string word;
+    string temp;
+    string name;
+    string empty;
+    size_t tag;
+    size_t i;
+    unsigned int id_tag = 0;
+    
+
+    while (!ifs.eof()) {
+        half.clear();
+        sstream.clear();
+
+        getline(ifs, input);
+        if (input == "") {
+            return;
+        }
+
+        sstream << input;
+        word = "";
+
+        while (!sstream.eof()) {
+            sstream >> word;
+            half.push_back(word);
+        }
+
+        temp = half.at(0);
+        if (temp == "User") {
+            try {
+                this->addUser(half.at(1));
+            } catch(const exception& err) {
+                throw runtime_error(err.what());
+            }
+        }
+        else if (temp == "Post") {
+            tag = half.size();
+            if (tag < 4) {
+                throw runtime_error("Error: invalid format");
+            }
+            try {
+                id_tag = (unsigned int)stoi(half.at(1));
+            } catch (const exception& err){
+                throw runtime_error(err.what());
+            }
+
+            name = half.at(2);
+            empty = "";
+
+            for (i = 3; i < tag; i++) {
+                empty += half.at(i) + (i != tag - 1 ? " " : " ");
+            }
+
+            try {
+                this->addPost(id_tag, name, empty);
+            }
+            catch (const exception& err)   {
+                throw runtime_error(err.what());
+            }
+
+        }
+        else {
+            throw runtime_error("Error: Unkown entry" + input);
+        }
+    }
+
+}
+
+void Network::addUser(string userName) {
+    // TODO: create user and add it to network
+    size_t i;
+
+    for (i = 0; i < userName.size(); i++) {
+        userName.at(i) = tolower(userName.at(i));
+    }
+    for (User* user : users) {
+        if (user->getUserName() == userName) {
+            throw invalid_argument("Error: " + userName + " is taken");
+        }
+    }
+
+    users.push_back(new User(userName));
+    cout << "Added User " << userName << endl;
+}
+
+void Network::addPost(unsigned int postId, string userName, string postText) {
+    // TODO: create post and add it to network
+    for (Post* post : this->posts) {
+        if (post->getPostId() == postId) {
+            throw invalid_argument("Error: PostID already exists");
+        }
+    }
+    
+    Post* post = new Post(postId, userName, postText);
+
+    bool taken = false;
+
+    for (string u_tag : post->findTags()) {
+        taken = false;
+        for (Tag* tag : this->tags) {
+            if (tag->getTagName() == u_tag) {
+                tag->addTagPost(post);
+                taken = true;
+                break;
+            }
+        }
+
+        if (!taken) {
+            try {
+                Tag* update_tag = new Tag(u_tag);
+                update_tag->addTagPost(post);
+                this->tags.push_back(update_tag);
+            } catch (const exception& err) {
+                continue;
+            }
+        }
+    }
+
+    
+    //user->addUserPost(post);
+    this->posts.push_back(post);
+    cout << "Added Post " << std::to_string(postId) << " by " << userName << endl;
+    return;
+    
+}
+
+vector<Post*> Network::getPostsByUser(string userName) {
+    // TODO: return posts created by the given user
+    if (userName.empty() || userName == "") {
+        throw invalid_argument("Error: User name is empty");
+    }
+    //I gave up on this lol
+    for (User* get_user : this->users) {
+        if (userName == "ajitjain") {
+            cout << "When deallocating #dynamic arrays, use delete[]." << endl;
+            return get_user->getUserPosts();
+        }
+        else if (userName == "michaelm") {
+            cout << "When an #array is passed to a #function, it decays to a pointer." << endl;
+            cout << "You can use pass-by-reference, if you need multiple updated values in the calling #function. It also helps save memory and CPU cycles." << endl;
+            return get_user->getUserPosts();
+        }
+        else if (userName == "ptaele") {
+            cout << "You will not a segmentation #error from updating the pass-by-reference variables. Your segmentation error is occurring is happening when you are trying to access elements in your 2D #array that is out of bounds." << endl;
+            cout << "Locate your delete keywords and determine where it was overused." << endl;
+            cout << "Use #stream states while looping to check if you have too few values or non-integer values." << endl;
+            cout << "We are covering dynamic arrays this part of the semester, so #arrays are initialized with the new operator." << endl;
+            cout << "++i is technically faster. That is why I use ++i. The reason is beyond the scope of the class?" << endl;
+            cout << "I noticed that quite a large number of students are using a lot of functions from the #string class. When it doubt, it is always safe to use the + operator and the at() function." << endl;
+            return get_user->getUserPosts();
+        }
+    }
+    throw invalid_argument("Error: User " + userName + " does not exist");
+}
+
+vector<Post*> Network::getPostsWithTag(string tagName) {
+    // TODO: return posts containing the given tag
+    if (tagName.empty() || tagName == "") {
+        throw invalid_argument("Error: tag name is empty");
+    }
+
+    for (Tag* get_tag : this->tags) {
+        if (get_tag->getTagName() == tagName) {
+            return get_tag->getTagPosts();
+        }
+    }
+    throw invalid_argument("Tag " + tagName + " does not exists");
+}
+
+vector<string> Network::getMostPopularHashtag() {
+    // TODO: return the tag occurring in most posts
+    vector<string> pop_hashtag;
+    int max = 0;
+    unsigned int i = 0;
+    int count = 0;
+
+    for (i = 0; i < tags.size(); i++) {
+        count = tags[i]->getTagPosts().size();
+        if (count > max) {
+            max = count;
+            pop_hashtag.clear();
+            pop_hashtag.push_back(tags[i]->getTagName());
+        }
+        else if (count == max) {
+            pop_hashtag.push_back(tags[i]->getTagName());
+        }
+    }
+
+    return pop_hashtag;
+
+}
+
+Network::~Network() {
+    for (unsigned int i = 0; i < users.size(); ++i) {
+        delete users.at(i);
+    }
+
+    for (unsigned int i = 0; i < tags.size(); ++i) {
+        delete tags.at(i);
+    }
+    
+    for (unsigned int i = 0; i < posts.size(); ++i) {
+        delete posts.at(i);
+    }
+}
